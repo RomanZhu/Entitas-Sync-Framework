@@ -64,6 +64,21 @@ TODO
 - BoundedVector2(*xMin, xMax, xPrecision, yMin, yMax, yPrecision*) - Should be applied on a field with UnityEngine.Vector2 type inside networking component. Under the hood works like 2 float fields with BoundedFloat attributes.
 - BoundedVector3(*xMin, xMax, xPrecision, yMin, yMax, yPrecision, zMin, zMax, zPrecision*)  - Should be applied on a field with UnityEngine.Vector3 type inside networking component.
 
+## Field types supported
+- byte
+- int
+- uint
+- long
+- ulong
+- short
+- ushort
+- string
+- boolean
+- float
+- UnityEngine.Vector2
+- UnityEngine.Vector3
+- non flag enums
+
 ## Dependencies
 - Entitas ECS 1.13.0
 - Unity 2019.1
