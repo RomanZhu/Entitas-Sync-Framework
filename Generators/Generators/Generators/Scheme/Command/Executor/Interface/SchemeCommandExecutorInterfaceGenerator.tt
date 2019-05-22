@@ -1,0 +1,17 @@
+﻿<#@ template language="C#" #>
+<#@ parameter name="Using" type="System.String"#>
+<#@ parameter name="Type" type="System.String"#>
+<#@ parameter name="SchemeNames" type="System.String[]"#>
+public interface I<#=Type#>Handler
+{
+<#
+    foreach (var name in SchemeNames)
+    {
+#>
+	void Handle<#=name#>Command(ref <#=Using#><#=name#>Command command);
+<#
+    }
+#>
+}
+
+public interface I<#=Type#>Command{}

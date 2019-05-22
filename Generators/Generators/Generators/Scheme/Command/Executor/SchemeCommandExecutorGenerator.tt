@@ -1,0 +1,46 @@
+﻿<#@ template language="C#" #>
+<#@ parameter name="Using" type="System.String"#>
+<#@ parameter name="Type" type="System.String"#>
+<#@ parameter name="SchemeIds" type="System.UInt16[]"#>
+<#@ parameter name="SchemeNames" type="System.String[]"#>
+using NetStack.Serialization;
+using Sources.Tools;
+
+public static class <#=Type#>CommandExecutor
+{
+    public static void Execute(I<#=Type#>Handler handler, BitBuffer buffer, ushort commandCount)
+	{
+		for (int i = 0; i < commandCount; i++)
+        {
+            var commandId = buffer.ReadUShort();
+            switch (commandId)
+            {
+			<#
+            for (int i = 0; i < SchemeNames.Length; i++)
+            {
+                var id = SchemeIds[i];
+                var name = SchemeNames[i];
+                #>
+				
+                case <#=id#>:
+                {
+<#
+                if (name != "Input" && name != "InputBufferState")
+                {
+#>
+					Logger.I.Log("<#=Type#>CommandExecutor", "Executing <#=Using#><#=name#>Command");
+<#
+                }
+#>
+                    var c = new  <#=Using#><#=name#>Command();
+                    c.Deserialize(buffer);
+                    handler.Handle<#=name#>Command(ref c);
+                    break;
+                }
+				<#
+            }
+			#>
+            }
+        }
+	}
+}

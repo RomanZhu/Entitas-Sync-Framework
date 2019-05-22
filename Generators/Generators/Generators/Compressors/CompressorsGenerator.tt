@@ -1,0 +1,36 @@
+﻿<#@ template language="C#" #>
+<#@ parameter name="Prefix" type="System.String"#>
+<#@ parameter name="CompressorNames" type="System.String[]"#>
+<#@ parameter name="Mins" type="System.Single[]"#>
+<#@ parameter name="Maxs" type="System.Single[]"#>
+<#@ parameter name="Precisions" type="System.Single[]"#>
+using NetStack.Compression;
+
+public static class <#=Prefix#>Compressors
+{
+<#
+for (int i = 0; i < Mins.Length; i++)
+{
+    var name = CompressorNames[i];
+	#>
+	public static readonly BoundedRange <#=name#>Compressor;
+	<#
+}
+#>
+    
+    static <#=Prefix#>Compressors()
+    {
+<#
+for (int i = 0; i < Mins.Length; i++)
+{
+    var name = CompressorNames[i];
+    var min = Mins[i];
+    var max = Maxs[i];
+    var precision = Precisions[i];
+    #>
+	    <#=name#>Compressor = new BoundedRange(<#=min#>, <#=max#>, <#=precision#>f);
+	<#
+}
+#>
+    }
+}

@@ -1,0 +1,66 @@
+﻿<#@ template language="C#" #>
+<#@ parameter name="ComponentName" type="System.String"#>
+<#@ parameter name="ComponentId" type="System.UInt16"#>
+<#@ parameter name="IsTag" type="System.Boolean"#>
+using System.Collections.Generic;
+using Entitas;
+using Sources.Networking.Server;
+
+<#
+    var name = ComponentName.Replace("Component", "");
+    var firstLowerName = char.ToLowerInvariant(name[0]) + name.Substring(1);
+#>
+
+public class ServerCaptureChanged<#=name#>System : ReactiveSystem<GameEntity>
+{
+	private readonly ServerNetworkSystem _server;
+	public ServerCaptureChanged<#=name#>System (Contexts contexts, Services services) : base(contexts.game)
+	{
+		_server = services.ServerSystem;
+	}
+		
+	protected override ICollector<GameEntity> GetTrigger(IContext<GameEntity> context) {
+		return context.CreateCollector(GameMatcher.<#=name#>.Added());
+	}
+		
+	protected override bool Filter(GameEntity entity)
+	{
+<#
+    if (IsTag)
+    {
+#>
+        return !entity.isDestroyed && entity.isWasSynced && entity.is<#=name#>;
+<#
+    }
+    else
+    {
+#>
+        return !entity.isDestroyed && entity.isWasSynced && entity.has<#=name#>;
+<#
+    }
+#>
+	}
+
+	protected override void Execute(List<GameEntity> entities) {
+		if (_server.State != ServerState.Working) return;
+
+		foreach (var e in entities) {
+		    _server.ChangedComponents.AddUShort(e.id.Value);
+<#
+    if (IsTag)
+    {
+#>
+            _server.ChangedComponents.AddUShort(<#=ComponentId#>);
+<#
+    }
+    else
+    {
+#>
+            e.<#=firstLowerName#>.Serialize(_server.ChangedComponents);
+<#
+    }
+#>
+			_server.ChangedComponentsCount++;
+		}
+	}
+}

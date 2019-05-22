@@ -1,0 +1,23 @@
+﻿<#@ template language="C#" #>
+<#@ parameter name="ComponentNames" type="System.String[]"#>
+using Sources.Networking.Server.StateCapture;
+
+public class ServerStateCaptureFeature : Feature
+{
+    public ServerStateCaptureFeature(Contexts contexts, Services services)
+    {
+<#
+    foreach (var name in ComponentNames)
+    {
+#>
+        Add(new ServerCaptureChanged<#=name#>System(contexts, services));
+        Add(new ServerCaptureRemoved<#=name#>System(contexts, services));
+<#
+    }
+#>
+
+	    Add(new ServerCreateWorldStateSystem(contexts));
+        Add(new ServerCaptureCreatedEntitiesSystem(contexts, services));
+        Add(new ServerCaptureRemovedEntitiesSystem(contexts, services));
+	}
+}

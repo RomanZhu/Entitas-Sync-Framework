@@ -1,0 +1,284 @@
+﻿<#@ template language="C#" #>
+<#@ parameter name="Namespace" type="System.String"#>
+<#@ parameter name="CommandName" type="System.String"#>
+<#@ parameter name="CommandId" type="System.UInt16"#>
+<#@ parameter name="FieldTypes" type="System.String[]"#>
+<#@ parameter name="FieldNames" type="System.String[]"#>
+<#@ parameter name="IsEnums" type="System.Boolean[]"#>
+<#@ parameter name="IsCompressed" type="System.Boolean[]"#>
+<#@ import namespace="System.Linq" #>
+using NetStack.Serialization;
+<#
+    if (FieldTypes.Any(x => x == "System.Single")|| 
+        FieldTypes.Any(x => x == "UnityEngine.Vector2")|| 
+        FieldTypes.Any(x => x == "UnityEngine.Vector3"))
+    {
+	#>
+using NetStack.Compression;
+	<#
+	}
+#>
+
+public struct <#=Namespace#><#= CommandName #>Command : ICommand, I<#=Namespace#>Command
+{
+<# for (int i = 0; i < FieldTypes.Length; i++)
+	{
+#>
+	public <#=FieldTypes[i]#> <#=FieldNames[i]#>;
+<#
+	} 
+#>
+    public void Serialize(BitBuffer bitBuffer)
+	{
+		bitBuffer.AddUShort(<#= CommandId #>);
+
+<# 
+	for (int i = 0; i < FieldTypes.Length; i++)
+	{
+        if (IsEnums[i])
+        {
+#>
+		bitBuffer.AddByte((byte)<#=FieldNames[i]#>);
+<#
+        }
+        else
+        {
+        var compressed = IsCompressed[i];
+		switch(FieldTypes[i])
+        {
+			case "System.Byte":
+#>
+		bitBuffer.AddByte(<#=FieldNames[i]#>); 
+<#
+			break;
+
+			case "System.Int32":
+#>
+		bitBuffer.AddInt(<#=FieldNames[i]#>); 
+<#
+			break;
+
+			case "System.UInt32":
+#>
+		bitBuffer.AddUInt(<#=FieldNames[i]#>); 
+<#
+			break;
+
+			case "System.Int64":
+#>
+		bitBuffer.AddLong(<#=FieldNames[i]#>); 
+<#
+			break;
+
+			case "System.UInt64":
+#>
+		bitBuffer.AddULong(<#=FieldNames[i]#>);
+<#
+			break;
+
+				case "System.Int16":
+#>
+		bitBuffer.AddShort(<#=FieldNames[i]#>); 
+<#
+			break;
+
+			case "System.UInt16":
+#>
+		bitBuffer.AddUShort(<#=FieldNames[i]#>); 
+<#
+			break;
+
+			case "System.String":
+#>
+		bitBuffer.AddString(<#=FieldNames[i]#>); 
+<#
+			break;
+
+			case "System.Boolean":
+#>
+		bitBuffer.AddBool(<#=FieldNames[i]#>); 
+<#
+			break;
+			
+			case "System.Single":
+                if (compressed)
+                {
+#>
+        bitBuffer.AddUInt(CommandCompressors.<#=Namespace#><#= CommandName #><#=FieldNames[i]#>Compressor.Compress(<#=FieldNames[i]#>));
+<#
+                }
+                else
+                {
+#>
+        bitBuffer.AddUShort(HalfPrecision.Compress(<#=FieldNames[i]#>));
+<#
+                }
+			break;
+			
+			case "UnityEngine.Vector2":
+                if (compressed)
+                {
+#>
+        bitBuffer.AddUInt(CommandCompressors.<#=Namespace#><#= CommandName #><#=FieldNames[i]#>XCompressor.Compress(<#=FieldNames[i]#>.x));
+        bitBuffer.AddUInt(CommandCompressors.<#=Namespace#><#= CommandName #><#=FieldNames[i]#>YCompressor.Compress(<#=FieldNames[i]#>.y));
+<#
+                }
+                else
+                {
+#>
+        bitBuffer.AddUShort(HalfPrecision.Compress(<#=FieldNames[i]#>.x));
+        bitBuffer.AddUShort(HalfPrecision.Compress(<#=FieldNames[i]#>.y));
+<#
+                }
+			break;
+			
+			case "UnityEngine.Vector3":
+                if (compressed)
+                {
+#>
+        bitBuffer.AddUInt(CommandCompressors.<#=Namespace#><#= CommandName #><#=FieldNames[i]#>XCompressor.Compress(<#=FieldNames[i]#>.x));
+        bitBuffer.AddUInt(CommandCompressors.<#=Namespace#><#= CommandName #><#=FieldNames[i]#>YCompressor.Compress(<#=FieldNames[i]#>.y));
+        bitBuffer.AddUInt(CommandCompressors.<#=Namespace#><#= CommandName #><#=FieldNames[i]#>ZCompressor.Compress(<#=FieldNames[i]#>.z));
+<#
+                }
+                else
+                {
+#>
+        bitBuffer.AddUShort(HalfPrecision.Compress(<#=FieldNames[i]#>.x));
+        bitBuffer.AddUShort(HalfPrecision.Compress(<#=FieldNames[i]#>.y));
+        bitBuffer.AddUShort(HalfPrecision.Compress(<#=FieldNames[i]#>.z));
+<#
+                }
+			break;
+		} 
+		
+        }
+	} 
+#>	}
+
+	public void Deserialize(BitBuffer bitBuffer)
+	{
+<# 
+	for (int i = 0; i < FieldTypes.Length; i++)
+	{
+		if (IsEnums[i])
+        {
+#>
+		<#=FieldNames[i]#> = (<#=FieldTypes[i]#>)bitBuffer.ReadByte(); 
+<#
+        }
+        else
+        {
+         var compressed = IsCompressed[i];
+		switch(FieldTypes[i])
+        {
+			case "System.Byte":
+#>
+		<#=FieldNames[i]#> = bitBuffer.ReadByte(); 
+<#
+			break;
+
+			case "System.Int32":
+#>
+		<#=FieldNames[i]#> = bitBuffer.ReadInt(); 
+<#
+			break;
+
+			case "System.UInt32":
+#>
+		<#=FieldNames[i]#> = bitBuffer.ReadUInt(); 
+<#
+			break;
+
+			case "System.Int64":
+#>
+		<#=FieldNames[i]#> = bitBuffer.ReadLong(); 
+<#
+			break;
+
+			case "System.UInt64":
+#>
+		<#=FieldNames[i]#> = bitBuffer.ReadULong();
+<#
+			break;
+
+				case "System.Int16":
+#>
+		<#=FieldNames[i]#> = bitBuffer.ReadShort(); 
+<#
+			break;
+
+			case "System.UInt16":
+#>
+		<#=FieldNames[i]#> = bitBuffer.ReadUShort(); 
+<#
+			break;
+
+			case "System.String":
+#>
+		<#=FieldNames[i]#> = bitBuffer.ReadString();
+<#
+			break;
+
+			case "System.Boolean":
+#>
+		<#=FieldNames[i]#> = bitBuffer.ReadBool(); 
+<#
+			break;
+
+			case "System.Single":
+                if (compressed)
+                {
+#>
+        <#=FieldNames[i]#> = CommandCompressors.<#=Namespace#><#= CommandName #><#=FieldNames[i]#>Compressor.Decompress(bitBuffer.ReadUInt());
+<#
+                }
+                else
+                {
+#>
+        <#=FieldNames[i]#> = HalfPrecision.Decompress(bitBuffer.ReadUShort());
+<#
+                }
+			break;
+			
+			case "UnityEngine.Vector2":
+                if (compressed)
+                {
+#>
+        <#=FieldNames[i]#>.x = CommandCompressors.<#=Namespace#><#= CommandName #><#=FieldNames[i]#>XCompressor.Decompress(bitBuffer.ReadUInt());
+        <#=FieldNames[i]#>.y = CommandCompressors.<#=Namespace#><#= CommandName #><#=FieldNames[i]#>YCompressor.Decompress(bitBuffer.ReadUInt());
+<#
+                }
+                else
+                {
+#>
+        <#=FieldNames[i]#>.x = HalfPrecision.Decompress(bitBuffer.ReadUShort());
+        <#=FieldNames[i]#>.y = HalfPrecision.Decompress(bitBuffer.ReadUShort());
+<#
+                }
+			break;
+			
+			case "UnityEngine.Vector3":
+                if (compressed)
+                {
+#>
+        <#=FieldNames[i]#>.x = CommandCompressors.<#=Namespace#><#= CommandName #><#=FieldNames[i]#>XCompressor.Decompress(bitBuffer.ReadUInt());
+        <#=FieldNames[i]#>.y = CommandCompressors.<#=Namespace#><#= CommandName #><#=FieldNames[i]#>YCompressor.Decompress(bitBuffer.ReadUInt());
+        <#=FieldNames[i]#>.z = CommandCompressors.<#=Namespace#><#= CommandName #><#=FieldNames[i]#>ZCompressor.Decompress(bitBuffer.ReadUInt());
+
+<#
+                }
+                else
+                {
+#>
+        <#=FieldNames[i]#>.x = HalfPrecision.Decompress(bitBuffer.ReadUShort());
+        <#=FieldNames[i]#>.y = HalfPrecision.Decompress(bitBuffer.ReadUShort());
+        <#=FieldNames[i]#>.z = HalfPrecision.Decompress(bitBuffer.ReadUShort());
+<#
+                }
+			break;
+		} 
+		}
+	} 
+#>	}
+}

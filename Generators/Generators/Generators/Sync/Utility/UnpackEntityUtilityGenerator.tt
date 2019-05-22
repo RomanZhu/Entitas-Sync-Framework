@@ -1,0 +1,166 @@
+﻿<#@ template language="C#" #>
+<#@ parameter name="ComponentNames" type="System.String[]"#>
+<#@ parameter name="ComponentIds" type="System.UInt16[]"#>
+<#@ parameter name="IsTags" type="System.Boolean[]"#>
+using System.Text;
+using NetStack.Serialization;
+using Sources.Tools;
+
+public static class UnpackEntityUtility
+{
+    public static void CreateEntities(GameContext game, BitBuffer buffer, ushort entityCount)
+    {
+        for (int i = 0; i < entityCount; i++)
+        {
+		    var addedComponents = new StringBuilder(128);
+
+            var e = game.CreateEntity();
+
+            var componentsCount = buffer.ReadUShort();
+
+            for (int j = 0; j < componentsCount; j++)
+            {
+                var componentId = buffer.ReadUShort();
+
+                switch (componentId)
+                {
+<#
+for (int i = 0; i < ComponentNames.Length; i++)
+{
+    var id = ComponentIds[i];
+    var fullName = ComponentNames[i];
+    var name = ComponentNames[i].Replace("Component", "");
+    var isTag = IsTags[i];
+#>
+                    case <#=id#>:
+					{
+					    addedComponents.Append(" <#=name#> ");
+<#
+if (isTag)
+{
+#>
+                        e.is<#=name#> = true;
+<#
+}
+else
+{
+#>
+                        var lookup = GameComponentsLookup.<#=name#>;
+						var comp = e.CreateComponent<<#=fullName#>>(lookup);
+						comp.Deserialize(buffer);
+						e.AddComponent(lookup, comp);
+<#
+}
+#>
+					}
+					    break;
+<#
+}
+#>
+                }
+            }
+			Logger.I.Log("UnpackEntityUtility", $" Entity-{e.id.Value}: created - ({addedComponents})");
+        }
+    }
+	
+	public static void ChangeComponents(GameContext game, BitBuffer buffer, ushort componentCount)
+	{
+		for (int i = 0; i < componentCount; i++)
+		{
+			var entityId    = buffer.ReadUShort();
+			var componentId = buffer.ReadUShort();
+			var e           = game.GetEntityWithId(entityId);
+
+			switch (componentId)
+			{
+<#
+for (int i = 0; i < ComponentNames.Length; i++)
+{
+    var id = ComponentIds[i];
+    var fullName = ComponentNames[i];
+    var name = ComponentNames[i].Replace("Component", "");
+    var isTag = IsTags[i];
+#>
+                    case <#=id#>:
+					{
+						Logger.I.Log("UnpackEntityUtility", $" Entity-{entityId}: Changed <#=name#> component");
+<#
+if (isTag)
+{
+#>
+                        e.is<#=name#> = true;
+<#
+}
+else
+{
+#>
+                        var lookup = GameComponentsLookup.<#=name#>;
+						var comp = e.CreateComponent<<#=fullName#>>(lookup);
+				        comp.Deserialize(buffer);
+				        e.ReplaceComponent(lookup, comp);
+<#
+}
+#>
+					}
+					    break;
+<#
+}
+#>
+			}
+		}
+	}
+	
+	public static void RemoveComponents(GameContext game, BitBuffer buffer, ushort componentCount)
+	{
+		for (int i = 0; i < componentCount; i++)
+		{
+			var entityId = buffer.ReadUShort();
+			var componentId = buffer.ReadUShort();
+			var e = game.GetEntityWithId(entityId);
+
+			switch (componentId)
+			{
+<#
+for (int i = 0; i < ComponentNames.Length; i++)
+{
+    var id = ComponentIds[i];
+    var name = ComponentNames[i].Replace("Component", "");
+    var isTag = IsTags[i];
+#>
+                    case <#=id#>:
+					{
+					    Logger.I.Log("UnpackEntityUtility", $" Entity-{entityId}: Removed <#=name#> component");
+<#
+if (isTag)
+{
+#>
+                        e.is<#=name#> = false;
+<#
+}
+else
+{
+#>
+                        e.Remove<#=name#>();
+<#
+}
+#>
+					}
+					    break;
+<#
+}
+#>
+			}
+		}
+	}
+	
+	public static void RemoveEntities(GameContext game, BitBuffer buffer, ushort entityCount)
+	{
+		for (int i = 0; i < entityCount; i++)
+		{
+			var id = buffer.ReadUShort();
+			var e = game.GetEntityWithId(id);
+            e.isDestroyed = true;
+			Logger.I.Log("UnpackEntityUtility", $" Entity-{id}: is removed");
+		}
+	}
+}

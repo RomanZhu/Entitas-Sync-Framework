@@ -1,0 +1,79 @@
+﻿<#@ template language="C#" #>
+<#@ parameter name="ComponentNames" type="System.String[]"#>
+<#@ parameter name="ComponentIds" type="System.UInt16[]"#>
+<#@ parameter name="IsTags" type="System.Boolean[]"#>
+using NetStack.Serialization;
+
+public static class PackEntityUtility
+{
+    public static void Pack(GameEntity e, BitBuffer buffer)
+    {
+		ushort counter = 0;
+
+<#
+for (int i = 0; i < ComponentNames.Length; i++)
+{
+    var name = ComponentNames[i].Replace("Component", "");
+    var isTag = IsTags[i];
+
+#>
+		var has<#=name#> = false;
+<#
+
+    if (isTag)
+    {
+#>
+        if(e.is<#=name#>)
+<#
+    }
+    else
+    {
+#>
+        if(e.has<#=name#>)
+<#
+    }
+	#>
+		{
+			has<#=name#> = true;
+			counter++;
+		}
+
+	<#
+}
+#>
+
+		buffer.AddUShort(counter);
+
+<#
+for (int i = 0; i < ComponentNames.Length; i++)
+{
+    var name = ComponentNames[i].Replace("Component", "");
+    var firstLowerName = char.ToLowerInvariant(name[0]) + name.Substring(1);
+    var id = ComponentIds[i];
+    var isTag = IsTags[i];
+
+#>
+        if (has<#=name#>)
+        {
+<#
+
+    if (isTag)
+    {
+#>
+            buffer.AddUShort(<#=id#>);
+<#
+    }
+    else
+    {
+#>
+            e.<#=firstLowerName#>.Serialize(buffer);
+<#
+    }
+	#>
+        }
+
+	<#
+}
+#>
+	}
+}
