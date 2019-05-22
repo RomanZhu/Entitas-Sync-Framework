@@ -4,8 +4,9 @@
 
 ## Features
 - Automatic ECS world syncronization
+- Client-server networking model
 - Command messaging system
-- Code generator to create neat API, serializers, deserializers and compressors
+- Code generator based on T4 templating to create neat API, serializers, deserializers and compressors
 - State buffering on the client
 - [Uses ENet for networking](https://github.com/nxrighthere/ENet-CSharp)
 - Native memory allocations
