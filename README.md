@@ -106,6 +106,6 @@ To create new networking component:
 - Unity 2019.1
 - ENet CSharp 2.2.6 
 
-[preview1]: https://i.imgur.com/P0qJVts.png
-[preview2]: https://i.imgur.com/aBczsan.png
-[preview3]: https://i.imgur.com/267WaWP.png
+[preview1]: https://i.imgur.com/H4a5rTv.png
+[preview2]: https://i.imgur.com/o0etJ5k.png
+[preview3]: https://i.imgur.com/lty8gA0.png
