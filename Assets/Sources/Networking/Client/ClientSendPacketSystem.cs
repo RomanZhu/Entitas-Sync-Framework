@@ -19,8 +19,11 @@ namespace Sources.Networking.Client
         {
             if (_client.State != ClientState.Connected) return;
 
-            var commandLength = _client.ToServer.Length;
             var commandCount  = _client.EnqueuedCommandCount;
+
+            if (commandCount == 0) return;
+            
+            var commandLength = _client.ToServer.Length;
             var totalLength   = commandLength + 4;
 
             fixed (byte* destination = &_data[0])

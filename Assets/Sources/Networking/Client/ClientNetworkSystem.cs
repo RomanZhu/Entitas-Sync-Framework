@@ -7,7 +7,8 @@ using ENet;
 using Entitas;
 using NetStack.Serialization;
 using Sources.Networking.Server;
-using Sources.Tools;
+using EventType = ENet.EventType;
+using Logger = Sources.Tools.Logger;
 
 namespace Sources.Networking.Client
 {
@@ -247,108 +248,130 @@ namespace Sources.Networking.Client
 
         private unsafe void ExecuteState(IntPtr state)
         {
+            PackedDataFlags flags;
+            int cursor;
+            
+            if (_firstPacket)
+            {
+                _firstPacket = false;
+                flags = PackedDataFlags.Commands | PackedDataFlags.CreatedEntities;
+                cursor = 0;
+            }
+            else
+            {
+                flags = (PackedDataFlags) Marshal.ReadByte(state);
+                cursor = 1;
+            }
+            
             #region commands
 
-            var commandsHeaderSpan = new ReadOnlySpan<ushort>(state.ToPointer(), 2);
-            var commandCount       = commandsHeaderSpan[0];
-            var commandLength      = commandsHeaderSpan[1];
-            var cursor             = 4;
-
-            if (commandCount > 0)
+            if ((flags & PackedDataFlags.Commands) == PackedDataFlags.Commands)
             {
-                var dataSpan = new ReadOnlySpan<byte>(IntPtr.Add(state, cursor).ToPointer(),
-                    commandLength);
-                _fromServer.Clear();
-                _fromServer.FromSpan(ref dataSpan, commandLength);
-                ClientCommandExecutor.Execute(_handler, _fromServer, commandCount);
-                cursor += commandLength;
-            }
+                var commandsHeaderSpan = new ReadOnlySpan<ushort>(IntPtr.Add(state, cursor).ToPointer(), 2);
+                var commandCount       = commandsHeaderSpan[0];
+                var commandLength      = commandsHeaderSpan[1];
+                cursor += 4;
 
+                if (commandCount > 0)
+                {
+                    var dataSpan = new ReadOnlySpan<byte>(IntPtr.Add(state, cursor).ToPointer(),
+                        commandLength);
+                    _fromServer.Clear();
+                    _fromServer.FromSpan(ref dataSpan, commandLength);
+                    ClientCommandExecutor.Execute(_handler, _fromServer, commandCount);
+                    cursor += commandLength;
+                }
+            }
             #endregion
 
             #region created entities
 
-            var createdEntitiesHeaderSpan =
-                new ReadOnlySpan<ushort>(IntPtr.Add(state, cursor).ToPointer(), 2);
-            var createdEntitiesCount  = createdEntitiesHeaderSpan[0];
-            var createdEntitiesLength = createdEntitiesHeaderSpan[1];
-            cursor += 4;
-
-            if (createdEntitiesCount > 0)
+            if ((flags & PackedDataFlags.CreatedEntities) == PackedDataFlags.CreatedEntities)
             {
-                var dataSpan = new ReadOnlySpan<byte>(IntPtr.Add(state, cursor).ToPointer(),
-                    createdEntitiesLength);
-                _fromServer.Clear();
-                _fromServer.FromSpan(ref dataSpan, createdEntitiesLength);
-                UnpackEntityUtility.CreateEntities(_game, _fromServer, createdEntitiesCount);
-                cursor += createdEntitiesLength;
+                var createdEntitiesHeaderSpan =
+                    new ReadOnlySpan<ushort>(IntPtr.Add(state, cursor).ToPointer(), 2);
+                var createdEntitiesCount  = createdEntitiesHeaderSpan[0];
+                var createdEntitiesLength = createdEntitiesHeaderSpan[1];
+                cursor += 4;
+
+                if (createdEntitiesCount > 0)
+                {
+                    var dataSpan = new ReadOnlySpan<byte>(IntPtr.Add(state, cursor).ToPointer(),
+                        createdEntitiesLength);
+                    _fromServer.Clear();
+                    _fromServer.FromSpan(ref dataSpan, createdEntitiesLength);
+                    UnpackEntityUtility.CreateEntities(_game, _fromServer, createdEntitiesCount);
+                    cursor += createdEntitiesLength;
+                }
             }
 
             #endregion
 
-            if (_firstPacket)
-            {
-                _firstPacket = false;
-                Marshal.FreeHGlobal(state);
-                return;
-            }
-
             #region removed entities
 
-            var removedEntitiesHeaderSpan =
-                new ReadOnlySpan<ushort>(IntPtr.Add(state, cursor).ToPointer(), 2);
-            var removedEntitiesCount  = removedEntitiesHeaderSpan[0];
-            var removedEntitiesLength = removedEntitiesHeaderSpan[1];
-
-            cursor += 4;
-
-            if (removedEntitiesCount > 0)
+            if ((flags & PackedDataFlags.RemovedEntities) == PackedDataFlags.RemovedEntities)
             {
-                var dataSpan = new ReadOnlySpan<byte>(IntPtr.Add(state, cursor).ToPointer(),
-                    removedEntitiesLength);
-                _fromServer.Clear();
-                _fromServer.FromSpan(ref dataSpan, removedEntitiesLength);
-                UnpackEntityUtility.RemoveEntities(_game, _fromServer, removedEntitiesCount);
-                cursor += removedEntitiesLength;
+                var removedEntitiesHeaderSpan =
+                    new ReadOnlySpan<ushort>(IntPtr.Add(state, cursor).ToPointer(), 2);
+                var removedEntitiesCount  = removedEntitiesHeaderSpan[0];
+                var removedEntitiesLength = removedEntitiesHeaderSpan[1];
+
+                cursor += 4;
+
+                if (removedEntitiesCount > 0)
+                {
+                    var dataSpan = new ReadOnlySpan<byte>(IntPtr.Add(state, cursor).ToPointer(),
+                        removedEntitiesLength);
+                    _fromServer.Clear();
+                    _fromServer.FromSpan(ref dataSpan, removedEntitiesLength);
+                    UnpackEntityUtility.RemoveEntities(_game, _fromServer, removedEntitiesCount);
+                    cursor += removedEntitiesLength;
+                }
             }
 
             #endregion
 
             #region removed components
 
-            var removedComponentsHeaderSpan =
-                new ReadOnlySpan<ushort>(IntPtr.Add(state, cursor).ToPointer(), 2);
-            var removedComponentsCount  = removedComponentsHeaderSpan[0];
-            var removedComponentsLength = removedComponentsHeaderSpan[1];
-            cursor += 4;
+            if ((flags & PackedDataFlags.RemovedComponents) == PackedDataFlags.RemovedComponents)
+            { 
+                var removedComponentsHeaderSpan =
+                    new ReadOnlySpan<ushort>(IntPtr.Add(state, cursor).ToPointer(), 2);
+                var removedComponentsCount  = removedComponentsHeaderSpan[0];
+                var removedComponentsLength = removedComponentsHeaderSpan[1];
+                cursor += 4;
 
-            if (removedComponentsCount > 0)
-            {
-                var dataSpan = new ReadOnlySpan<byte>(IntPtr.Add(state, cursor).ToPointer(),
-                    removedComponentsLength);
-                _fromServer.Clear();
-                _fromServer.FromSpan(ref dataSpan, removedComponentsLength);
-                UnpackEntityUtility.RemoveComponents(_game, _fromServer, removedComponentsCount);
-                cursor += removedComponentsLength;
+                if (removedComponentsCount > 0)
+                {
+                    var dataSpan = new ReadOnlySpan<byte>(IntPtr.Add(state, cursor).ToPointer(),
+                        removedComponentsLength);
+                    _fromServer.Clear();
+                    _fromServer.FromSpan(ref dataSpan, removedComponentsLength);
+                    UnpackEntityUtility.RemoveComponents(_game, _fromServer, removedComponentsCount);
+                    cursor += removedComponentsLength;
+                }
             }
 
             #endregion
 
             #region changed components
-
-            var changedComponentsHeaderSpan =
-                new ReadOnlySpan<ushort>(IntPtr.Add(state, cursor).ToPointer(), 2);
-            var changedComponentsCount  = changedComponentsHeaderSpan[0];
-            var changedComponentsLength = changedComponentsHeaderSpan[1];
-            cursor += 4;
-
-            if (changedComponentsCount > 0)
+            
+            if ((flags & PackedDataFlags.ChangedComponents) == PackedDataFlags.ChangedComponents)
             {
-                var dataSpan = new ReadOnlySpan<byte>(IntPtr.Add(state, cursor).ToPointer(),
-                    changedComponentsLength);
-                _fromServer.Clear();
-                _fromServer.FromSpan(ref dataSpan, changedComponentsLength);
-                UnpackEntityUtility.ChangeComponents(_game, _fromServer, changedComponentsCount);
+                var changedComponentsHeaderSpan =
+                    new ReadOnlySpan<ushort>(IntPtr.Add(state, cursor).ToPointer(), 2);
+                var changedComponentsCount  = changedComponentsHeaderSpan[0];
+                var changedComponentsLength = changedComponentsHeaderSpan[1];
+                cursor += 4;
+
+                if (changedComponentsCount > 0)
+                {
+                    var dataSpan = new ReadOnlySpan<byte>(IntPtr.Add(state, cursor).ToPointer(),
+                        changedComponentsLength);
+                    _fromServer.Clear();
+                    _fromServer.FromSpan(ref dataSpan, changedComponentsLength);
+                    UnpackEntityUtility.ChangeComponents(_game, _fromServer, changedComponentsCount);
+                }
             }
 
             #endregion

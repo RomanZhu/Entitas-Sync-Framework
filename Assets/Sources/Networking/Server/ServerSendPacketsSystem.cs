@@ -85,22 +85,43 @@ namespace Sources.Networking.Server
                     }
                     else
                     {
-                        #region commands
-
                         var cb            = e.clientDataBuffer;
                         var commandLength = cb.Value.Length;
 
-                        var commandCount = cb.CommandCount;
-                        fixed (byte* destination = &_data[0])
-                        {
-                            var shortsSpan = new Span<ushort>(destination, 2);
-                            shortsSpan[0] = commandCount;
-                            shortsSpan[1] = (ushort) commandLength;
-                        }
+                        var commandCount           = cb.CommandCount;
+                        var createdEntitiesCount   = _server.CreatedEntitiesCount;
+                        var removedEntitiesCount   = _server.RemovedEntitiesCount;
+                        var removedComponentsCount = _server.RemovedComponentsCount;
+                        var changedComponentsCount = _server.ChangedComponentsCount;
 
-                        var offset = 4;
+                        var flags = PackedDataFlags.None;
+                        
+                        if (commandCount > 0)
+                            flags |= PackedDataFlags.Commands;
+                        if (createdEntitiesCount > 0)
+                            flags |= PackedDataFlags.CreatedEntities;
+                        if (removedEntitiesCount > 0)
+                            flags |= PackedDataFlags.RemovedEntities;
+                        if (removedComponentsCount > 0)
+                            flags |= PackedDataFlags.RemovedComponents;
+                        if (changedComponentsCount > 0)
+                            flags |= PackedDataFlags.ChangedComponents;
+
+                        var offset = 1;
+                        _data[0] = (byte) flags;
+
+                        #region commands
+                        
                         if (commandCount > 0)
                         {
+                            fixed (byte* destination = &_data[offset])
+                            {
+                                var shortsSpan = new Span<ushort>(destination, 2);
+                                shortsSpan[0] = commandCount;
+                                shortsSpan[1] = (ushort) commandLength;
+                            }
+
+                            offset += 4;
                             cb.Value.ToArray(_data, offset);
                             offset += commandLength;
 
@@ -112,17 +133,16 @@ namespace Sources.Networking.Server
 
                         #region created entities
 
-                        fixed (byte* destination = &_data[offset])
+                        if (createdEntitiesCount > 0)
                         {
-                            var shortsSpan = new Span<ushort>(destination, 2);
-                            shortsSpan[0] = _server.CreatedEntitiesCount;
-                            shortsSpan[1] = (ushort) createdEntitiesLength;
-                        }
+                            fixed (byte* destination = &_data[offset])
+                            {
+                                var shortsSpan = new Span<ushort>(destination, 2);
+                                shortsSpan[0] = createdEntitiesCount;
+                                shortsSpan[1] = (ushort) createdEntitiesLength;
+                            }
 
-                        offset += 4;
-
-                        if (_server.CreatedEntitiesCount > 0)
-                        {
+                            offset += 4;
                             _server.CreatedEntities.ToArray(_data, offset);
                             offset += createdEntitiesLength;
                         }
@@ -131,17 +151,16 @@ namespace Sources.Networking.Server
 
                         #region removed entities
 
-                        fixed (byte* destination = &_data[offset])
+                        if (removedEntitiesCount > 0)
                         {
-                            var shortsSpan = new Span<ushort>(destination, 2);
-                            shortsSpan[0] = _server.RemovedEntitiesCount;
-                            shortsSpan[1] = (ushort) removedEntitiesLength;
-                        }
+                            fixed (byte* destination = &_data[offset])
+                            {
+                                var shortsSpan = new Span<ushort>(destination, 2);
+                                shortsSpan[0] = removedEntitiesCount;
+                                shortsSpan[1] = (ushort) removedEntitiesLength;
+                            }
 
-                        offset += 4;
-
-                        if (_server.RemovedEntitiesCount > 0)
-                        {
+                            offset += 4;
                             _server.RemovedEntities.ToArray(_data, offset);
                             offset += removedEntitiesLength;
                         }
@@ -150,17 +169,16 @@ namespace Sources.Networking.Server
 
                         #region removed components
 
-                        fixed (byte* destination = &_data[offset])
+                        if (removedComponentsCount > 0)
                         {
-                            var shortsSpan = new Span<ushort>(destination, 2);
-                            shortsSpan[0] = _server.RemovedComponentsCount;
-                            shortsSpan[1] = (ushort) removedComponentsLength;
-                        }
+                            fixed (byte* destination = &_data[offset])
+                            {
+                                var shortsSpan = new Span<ushort>(destination, 2);
+                                shortsSpan[0] = removedComponentsCount;
+                                shortsSpan[1] = (ushort) removedComponentsLength;
+                            }
 
-                        offset += 4;
-
-                        if (_server.RemovedComponentsCount > 0)
-                        {
+                            offset += 4;
                             _server.RemovedComponents.ToArray(_data, offset);
                             offset += removedComponentsLength;
                         }
@@ -169,17 +187,16 @@ namespace Sources.Networking.Server
 
                         #region changed components
 
-                        fixed (byte* destination = &_data[offset])
+                        if (changedComponentsCount > 0)
                         {
-                            var shortsSpan = new Span<ushort>(destination, 2);
-                            shortsSpan[0] = _server.ChangedComponentsCount;
-                            shortsSpan[1] = (ushort) changedComponentsLength;
-                        }
+                            fixed (byte* destination = &_data[offset])
+                            {
+                                var shortsSpan = new Span<ushort>(destination, 2);
+                                shortsSpan[0] = changedComponentsCount;
+                                shortsSpan[1] = (ushort) changedComponentsLength;
+                            }
 
-                        offset += 4;
-
-                        if (_server.ChangedComponentsCount > 0)
-                        {
+                            offset += 4;
                             _server.ChangedComponents.ToArray(_data, offset);
                             offset += changedComponentsLength;
                         }

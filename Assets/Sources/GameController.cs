@@ -5,7 +5,6 @@ using Entitas;
 using Sources.Networking.Client;
 using Sources.Networking.Server;
 using UnityEngine;
-using Random = UnityEngine.Random;
 
 public class GameController : MonoBehaviour
 {
