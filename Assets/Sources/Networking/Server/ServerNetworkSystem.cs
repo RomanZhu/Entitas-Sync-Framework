@@ -206,7 +206,7 @@ namespace Sources.Networking.Server
                                         _eventsToHandle.Enqueue(new ReceivedEvent
                                             {Data = newPtr, Peer = @event.Peer, EventType = EventType.Receive});
                                     }
-
+                                    @event.Packet.Dispose();
                                     break;
                             }
                     }
